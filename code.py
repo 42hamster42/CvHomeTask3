@@ -1,8 +1,10 @@
 import os
+from datetime import datetime
 from pathlib import Path
 
 import cv2
 import numpy as np
+from matplotlib import pyplot as plt
 
 
 def hough_inner(img, buff1, buff2, x_min, x_max):
@@ -63,6 +65,23 @@ def main():
         M = cv2.getRotationMatrix2D((cX, cY), alpha, 1.0)
         im_rotated = cv2.warpAffine(im, M, (w, h))
         cv2.imwrite(str(OUT_DIR / fname), im_rotated)
+
+    areas = []
+    times_per_pixel = []
+    for i in range(9, 16):
+        size = 2 ** i
+        img = np.zeros((size, size), np.uint8)
+        start = datetime.now()
+        hough(img)
+        end = datetime.now()
+        time = (end - start).total_seconds() / 1000
+        area = size * size / 1000000
+        areas.append(area)
+        time_per_pixel = time / (area)
+        times_per_pixel.append(time_per_pixel)
+    plt.plot(areas, times_per_pixel)
+    plt.savefig('plot.png')
+    plt.show()
 
 
 if __name__ == "__main__":
