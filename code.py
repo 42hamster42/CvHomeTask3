@@ -1,23 +1,21 @@
 import os
-import cv2
-import glob
 from pathlib import Path
+
+import cv2
 import numpy as np
 
 
 def hough_inner(img, buff1, buff2, x_min, x_max):
-    width = img.shape[0]
-    res = buff1[x_min:x_max, :]
     if x_max - x_min <= 1:
-        res[0] = img[x_min]
+        buff1[x_min] = img[x_min]
     else:
         x_mid = (x_min + x_max) // 2
-        ans1 = hough_inner(img, buff2, buff1, x_min, x_mid)
-        ans2 = hough_inner(img, buff2, buff1, x_mid, x_max)
+        hough_inner(img, buff2, buff1, x_min, x_mid)
+        hough_inner(img, buff2, buff1, x_mid, x_max)
         for shift in range(x_max - x_min):
-            for x in range(width):
-                res[shift, x] = ans1[shift // 2, x] + ans2[shift // 2, (x + shift // 2 + shift % 2) % width]
-    return res
+            y = x_mid + shift // 2
+            buff1[x_min + shift] = buff2[x_min + shift // 2] + np.concatenate(
+                (buff2[y, shift // 2 + shift % 2:], buff2[y, :shift // 2 + shift % 2]))
 
 
 def hough(img):
@@ -29,7 +27,8 @@ def hough(img):
     padded_img[:h, :w] = img
     buffer1 = np.zeros((size, size), np.int)
     buffer2 = np.zeros((size, size), np.int)
-    return hough_inner(padded_img, buffer1, buffer2, 0, size), size
+    hough_inner(padded_img, buffer1, buffer2, 0, size)
+    return buffer1, size
 
 
 IN_DIR = Path('input')
@@ -48,7 +47,6 @@ def main():
         print(fname)
         im = cv2.imread(str(IN_DIR / fname))
         gray_im = cv2.cvtColor(im, cv2.COLOR_BGR2GRAY)
-        gray_im = cv2.resize(gray_im, (gray_im.shape[1] // 2, gray_im.shape[0] // 2))
         square_im = cv2.Canny(gray_im, 100, 200)
         cv2.imwrite(str(TANSFORMED_DIR / fname), square_im)
         hough_im, size = hough(square_im)
@@ -62,7 +60,7 @@ def main():
         print(alpha)
         cX = w // 2
         cY = h // 2
-        M = cv2.getRotationMatrix2D((cX, cY), int(alpha), 1.0)
+        M = cv2.getRotationMatrix2D((cX, cY), alpha, 1.0)
         im_rotated = cv2.warpAffine(im, M, (w, h))
         cv2.imwrite(str(OUT_DIR / fname), im_rotated)
 
